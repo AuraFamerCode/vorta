@@ -52,6 +52,15 @@ def summarize_traceback(message: str) -> str:
     return message
 
 
+def worst_error(errors: list[tuple[int, str]] | None) -> str | None:
+    """The most severe message Borg logged, to show as the reason a job failed."""
+    if not errors:
+        return None
+
+    worst = max(level for level, _ in errors)
+    return next(message for level, message in errors if level == worst)
+
+
 """
 All methods in this class must be thread safe. Particularly,
 I strongly unadvised global variable and class variables.

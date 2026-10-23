@@ -136,6 +136,46 @@ def test_repo_add_failure(qapp, qtbot, borg_json_output):
     assert add_repo_window.errorText.text().startswith('Please enter a valid repo URL')
 
 
+def test_existing_repo_add_shows_borg_error(qapp, qtbot, mocker, borg_json_output):
+    """When Borg rejects the repo, the reason is shown in the dialog, not only in the main window."""
+    main = qapp.main_window
+    tab = main.repoTab
+    tab.add_existing_repo()
+    add_repo_window = tab._window
+    qtbot.addWidget(add_repo_window)
+    test_repo_url = f'vorta-test-repo.{uuid.uuid4()}.com:repo'  # Random repo URL to avoid macOS keychain
+
+    qtbot.keyClicks(add_repo_window.repoURL, test_repo_url)
+    qtbot.keyClicks(add_repo_window.passwordInput, 'wrong-password')
+
+    stdout, stderr = borg_json_output('info_wrong_passphrase')
+    popen_result = mocker.MagicMock(stdout=stdout, stderr=stderr, returncode=52)
+    mocker.patch.object(vorta.borg.borg_job, 'Popen', return_value=popen_result)
+
+    add_repo_window.run()
+    qtbot.waitUntil(lambda: add_repo_window.errorText.text().startswith('Unable to add'), **pytest._wait_defaults)
+
+    assert add_repo_window.errorText.text() == (
+        'Unable to add your repository.\n'
+        'passphrase supplied in BORG_PASSPHRASE, by BORG_PASSCOMMAND or via BORG_PASSPHRASE_FD is incorrect.'
+    )
+    assert RepoModel.get_or_none(RepoModel.url == test_repo_url) is None
+
+
+def test_repo_add_failure_without_borg_error(qapp, qtbot):
+    """Without a logged Borg error, the dialog keeps the generic message."""
+    main = qapp.main_window
+    tab = main.repoTab
+    tab.new_repo()
+    add_repo_window = tab._window
+    qtbot.addWidget(add_repo_window)
+
+    add_repo_window.run_result({'returncode': 2, 'errors': []})
+
+    assert add_repo_window.errorText.text() == 'Unable to add your repository.'
+    assert add_repo_window.saveButton.isEnabled()
+
+
 def test_repo_add_success(qapp, qtbot, mocker, borg_json_output):
     main = qapp.main_window
     tab = main.repoTab

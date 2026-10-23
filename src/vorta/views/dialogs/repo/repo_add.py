@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
+from vorta.borg.borg_job import worst_error
 from vorta.borg.info_repo import BorgInfoRepoJob
 from vorta.borg.init import BorgInitJob
 from vorta.keyring.abc import VortaKeyring
@@ -93,7 +94,11 @@ class RepoWindow(AddRepoBase, AddRepoUI):
             self.added_repo.emit(result)
             self.accept()
         else:
-            self._set_status(self.tr('Unable to add your repository.'))
+            status = self.tr('Unable to add your repository.')
+            reason = worst_error(result.get('errors'))
+            if reason:
+                status = f'{status}\n{reason}'
+            self._set_status(status)
 
     def init_ssh_key(self):
         keys = get_private_keys()

@@ -118,3 +118,31 @@ def test_add_existing_repo(qapp, qtbot, monkeypatch, choose_file_dialog):
     # check that repo was added correctly
     assert vorta.store.models.RepoModel.select().first().url == str(current_repo_path)
     assert vorta.store.models.RepoModel.select().first().name == TEST_REPO_NAME
+
+
+def test_add_existing_repo_shows_borg_error(qapp, qtbot, monkeypatch, choose_file_dialog, tmpdir):
+    """Borg's reason for rejecting an existing repo is shown in the add repo dialog"""
+    main = qapp.main_window
+    tab = main.repoTab
+    not_a_repo = tmpdir.join('not_a_repo')
+    not_a_repo.mkdir()
+
+    main.repoTab.add_existing_repo()
+    add_repo_window = main.repoTab._window
+    monkeypatch.setattr(
+        vorta.views.dialogs.repo.repo_add,
+        "choose_file_dialog",
+        lambda *args, **kwargs: choose_file_dialog(*args, **kwargs, directory=str(not_a_repo)),
+    )
+    qtbot.mouseClick(add_repo_window.chooseLocalFolderButton, Qt.MouseButton.LeftButton)
+    initial_count = tab.repoSelector.count()
+
+    add_repo_window.run()
+    qtbot.waitUntil(lambda: all_workers_finished(qapp.jobs_manager), **pytest._wait_defaults)
+    QCoreApplication.processEvents()
+    qtbot.waitUntil(lambda: add_repo_window.saveButton.isEnabled(), **pytest._wait_defaults)
+
+    status = add_repo_window.errorText.text()
+    assert status.startswith('Unable to add your repository.\n')
+    assert 'not_a_repo' in status
+    assert tab.repoSelector.count() == initial_count

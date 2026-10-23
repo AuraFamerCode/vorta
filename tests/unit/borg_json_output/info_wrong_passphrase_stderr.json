@@ -1,0 +1,2 @@
+{"type": "log_message", "time": 1761200000.1, "message": "using builtin fallback logging configuration", "levelname": "DEBUG", "name": "borg.logger"}
+{"type": "log_message", "time": 1761200000.2, "message": "passphrase supplied in BORG_PASSPHRASE, by BORG_PASSCOMMAND or via BORG_PASSPHRASE_FD is incorrect.", "levelname": "ERROR", "name": "borg.archiver", "msgid": "PassphraseWrong"}
